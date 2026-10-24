@@ -29,6 +29,17 @@ function require_csrf_token(): void
     }
 }
 
+function require_authenticated_user(): int
+{
+    $userId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1],
+    ]);
+    if ($userId === false) {
+        json_response(['error' => 'Vui lòng đăng nhập để tiếp tục.'], 401);
+    }
+    return $userId;
+}
+
 function json_request_body(): array
 {
     $body = json_decode(file_get_contents('php://input'), true);

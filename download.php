@@ -55,7 +55,7 @@ if (
     || !is_file($filePath)
 ) {
     error_log('Shared file is missing from private storage.');
-    fail_download('Không tìm thấy nội dung tệp.', 404);
+    fail_download('Tệp này đang thiếu trên ổ đĩa lưu trữ. Vui lòng liên hệ chủ sở hữu để tải lên lại.', 404);
 }
 
 $updated = pg_query_params(
@@ -75,6 +75,15 @@ if (!$updated) {
 }
 if (pg_num_rows($updated) === 0) {
     fail_download('Liên kết đã hết hạn hoặc đạt giới hạn lượt tải.', 410);
+}
+
+$activity = pg_query_params(
+    $conn,
+    'INSERT INTO activity_logs (user_id, file_id, action) VALUES ($1, $2, $3)',
+    [$file['owner_id'], $file['id'], 'download']
+);
+if (!$activity) {
+    error_log('Failed to record file download: ' . pg_last_error($conn));
 }
 
 header('Content-Type: ' . ($file['file_type'] ?: 'application/octet-stream'));
