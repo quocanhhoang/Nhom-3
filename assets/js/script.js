@@ -175,6 +175,29 @@
         document.dispatchEvent(new CustomEvent("files:rendered"));
         document.getElementById("nav-file-count").textContent = String(files.length);
         document.getElementById("stat-file-count").textContent = String(files.length);
+        const activeList = document.getElementById("active-links-list");
+        const now = Date.now();
+        const activeLinks = files.filter((file) => file.access_type === "public" && file.is_link_active && !file.is_missing
+            && (!file.expires_at || new Date(file.expires_at).getTime() >= now)
+            && (file.download_limit === null || file.download_count < file.download_limit));
+        activeList.replaceChildren();
+        if (activeLinks.length === 0) {
+            const empty = document.createElement("li");
+            empty.className = "active-links-empty";
+            empty.textContent = "Hiện chưa có liên kết nào còn hiệu lực.";
+            activeList.append(empty);
+        }
+        activeLinks.forEach((file) => {
+            const item = document.createElement("li");
+            const anchor = document.createElement("a");
+            anchor.href = new URL(`download.php?code=${encodeURIComponent(file.share_code)}`, window.location.href).href;
+            anchor.textContent = file.file_name;
+            const meta = document.createElement("small");
+            const expiry = file.expires_at ? new Intl.DateTimeFormat("vi-VN").format(new Date(file.expires_at)) : "Không hết hạn";
+            meta.textContent = `${file.download_count} / ${file.download_limit ?? "∞"} lượt · Hết hạn: ${expiry}${file.has_link_password ? " · Có mật khẩu" : ""}`;
+            item.append(anchor, meta);
+            activeList.append(item);
+        });
     };
 
     const setSelectedFile = (file) => {
@@ -282,13 +305,18 @@
         icon.className = `file-icon ${iconType}`;
         icon.innerHTML = `<span>${iconLetter}</span>`;
         document.getElementById("revoke-link").hidden = !isActive;
-        document.getElementById("create-link").hidden = isActive;
         document.getElementById("link-status-toggle").classList.toggle("on", isActive);
         document.getElementById("link-status-label").textContent = isActive ? "Liên kết đang hoạt động" : "Liên kết đã bị thu hồi";
         document.getElementById("link-download-limit").textContent = `${file.download_count} / ${file.download_limit ?? "Không giới hạn"} lượt tải`;
         document.getElementById("link-expiry").textContent = file.expires_at
             ? new Intl.DateTimeFormat("vi-VN").format(new Date(file.expires_at))
             : "Không thời hạn";
+        document.getElementById("detail-link-limit").value = file.download_limit ?? "";
+        document.getElementById("detail-link-expiry").value = file.expires_at ? file.expires_at.slice(0, 10) : "";
+        document.getElementById("detail-link-password").value = "";
+        document.getElementById("clear-link-password").checked = false;
+        document.getElementById("create-link").disabled = !isPublic;
+        document.getElementById("create-link").title = isPublic ? "Lưu cài đặt và tạo mã liên kết mới" : "Chỉ tệp công khai mới có thể tạo liên kết tải";
         renderPermissions([]);
         document.getElementById("permission-history").hidden = true;
         document.getElementById("permission-history-toggle").textContent = "Xem lịch sử cấp quyền";
@@ -419,6 +447,7 @@
         data.append("access", document.querySelector('input[name="access"]:checked').value);
         data.append("limit", document.getElementById("download-limit").value);
         data.append("expiry", document.getElementById("expiry-date").value);
+        data.append("link_password", document.getElementById("upload-link-password").value);
         data.append("folder_id", document.getElementById("upload-folder").value);
         submitButton.disabled = true;
 
@@ -501,7 +530,6 @@
             document.getElementById("link-status-toggle").classList.remove("on");
             document.getElementById("link-status-label").textContent = "Liên kết đã bị thu hồi";
             document.getElementById("revoke-link").hidden = true;
-            document.getElementById("create-link").hidden = false;
             showToast("Đã thu hồi liên kết chia sẻ.");
         } catch (error) {
             showToast(error.message);
@@ -515,21 +543,32 @@
         try {
             const { file } = await apiRequest("api/create_link.php", {
                 method: "POST",
-                body: { file_id: selectedFileId },
+                body: {
+                    file_id: selectedFileId,
+                    expiry: document.getElementById("detail-link-expiry").value,
+                    download_limit: document.getElementById("detail-link-limit").value,
+                    password: document.getElementById("detail-link-password").value,
+                    clear_password: document.getElementById("clear-link-password").checked,
+                },
             });
             const currentFile = files.find((item) => item.id === selectedFileId);
             Object.assign(currentFile, file);
             const shareUrl = new URL(`download.php?code=${encodeURIComponent(file.share_code)}`, window.location.href).href;
             document.getElementById("share-url").textContent = shareUrl;
-            document.getElementById("share-description").textContent = "Liên kết mới có hiệu lực trong 30 ngày hoặc đến khi đạt giới hạn lượt tải.";
+            document.getElementById("share-description").textContent = file.has_link_password
+                ? "Liên kết mới yêu cầu mật khẩu để tải tệp."
+                : "Liên kết mới dùng cài đặt thời hạn và giới hạn tải đã chọn.";
             document.getElementById("link-status-toggle").classList.add("on");
             document.getElementById("link-status-label").textContent = "Liên kết đang hoạt động";
             document.getElementById("link-download-limit").textContent = `0 / ${file.download_limit ?? "Không giới hạn"} lượt tải`;
-            document.getElementById("link-expiry").textContent = new Intl.DateTimeFormat("vi-VN").format(new Date(file.expires_at));
-            button.hidden = true;
+            document.getElementById("link-expiry").textContent = file.expires_at
+                ? new Intl.DateTimeFormat("vi-VN").format(new Date(file.expires_at))
+                : "Không thời hạn";
+            document.getElementById("detail-link-password").value = "";
+            document.getElementById("clear-link-password").checked = false;
             document.getElementById("revoke-link").hidden = false;
             renderFiles();
-            showToast("Đã tạo liên kết chia sẻ mới.");
+            showToast("Đã lưu cài đặt và tạo mã liên kết mới.");
         } catch (error) {
             showToast(error.message);
         } finally {

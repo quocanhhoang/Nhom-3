@@ -259,6 +259,14 @@ h1 { margin-bottom: 7px; color: #272a40; font-family: Manrope, sans-serif; font-
 .folder-item strong { color: #424559; font-size: 12px; }
 .folder-item small, .folder-empty { color: #999baa; font-size: 10px; }
 .folder-empty { margin: 4px; }
+.active-links-section { display: grid; gap: 12px; padding: 18px 22px; border-bottom: 1px solid #eeeef4; }
+.active-links-section h2 { margin: 0; color: #33364b; font-size: 14px; }
+.active-links-section p { margin: 4px 0 0; color: #999baa; font-size: 11px; }
+.active-links-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.active-links-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 8px 0; }
+.active-links-list a { color: #6252e8; font-size: 12px; font-weight: 600; }
+.active-links-list small, .active-links-empty { color: #8d90a2; font-size: 10px; }
+.link-password-clear { display: flex; align-items: center; gap: 7px; margin: 10px 0; color: #777b8e; font-size: 11px; }
 .folder-delete { width: auto; min-height: 30px; margin: 0; padding: 0 10px; }
 .logout-button { border: 0; background: transparent; color: #7161d2; font-size: 10px; cursor: pointer; }
 .auth-page { display: grid; min-height: 100vh; place-items: center; padding: 20px; background: #f5f7fb; }
