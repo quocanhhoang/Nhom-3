@@ -10,8 +10,7 @@
     );
 
     if (!$conn) {
-        die("Kết nối thất bại!");
+        error_log("PostgreSQL connection failed.");
+        throw new RuntimeException("Không thể kết nối tới cơ sở dữ liệu.");
     }
-
-    echo "Kết nối PostgreSQL thành công!";
 ?>

@@ -1,0 +1,118 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/bootstrap.php';
+
+$body = null;
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $requestedFileId = $_GET['file_id'] ?? null;
+} else {
+    require_method('POST');
+    require_csrf_token();
+    $body = json_request_body();
+    $requestedFileId = $body['file_id'] ?? null;
+}
+
+$fileId = filter_var($requestedFileId, FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1],
+]);
+if ($fileId === false) {
+    json_response(['error' => 'Tệp được chọn không hợp lệ.'], 400);
+}
+
+$ownedFile = pg_query_params(
+    $conn,
+    'SELECT id FROM files WHERE id = $1 AND owner_id = $2',
+    [$fileId, FILESHARE_OWNER_ID]
+);
+if (!$ownedFile) {
+    error_log('Failed to verify file ownership: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể xác minh quyền sở hữu tệp.'], 500);
+}
+if (pg_num_rows($ownedFile) === 0) {
+    json_response(['error' => 'Không tìm thấy tệp.'], 404);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $result = pg_query_params(
+        $conn,
+        'SELECT u.full_name, u.email
+         FROM file_permissions fp
+         JOIN users u ON u.id = fp.user_id
+         WHERE fp.file_id = $1
+         ORDER BY fp.created_at, fp.id',
+        [$fileId]
+    );
+    if (!$result) {
+        error_log('Failed to list file permissions: ' . pg_last_error($conn));
+        json_response(['error' => 'Không thể tải danh sách người được cấp quyền.'], 500);
+    }
+
+    $permissions = [];
+    while ($permission = pg_fetch_assoc($result)) {
+        $permissions[] = $permission;
+    }
+    json_response(['permissions' => $permissions]);
+}
+
+$email = trim((string) ($body['email'] ?? ''));
+if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254) {
+    json_response(['error' => 'Địa chỉ email không hợp lệ.'], 400);
+}
+
+$userResult = pg_query_params($conn, 'SELECT id, full_name, email FROM users WHERE lower(email) = lower($1)', [$email]);
+if (!$userResult) {
+    error_log('Failed to find user for file permission: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể tìm người dùng.'], 500);
+}
+$user = pg_fetch_assoc($userResult);
+if (!$user) {
+    json_response(['error' => 'Email này chưa thuộc tài khoản người dùng nào.'], 404);
+}
+if ((int) $user['id'] === FILESHARE_OWNER_ID) {
+    json_response(['error' => 'Chủ sở hữu tệp đã có quyền truy cập.'], 409);
+}
+
+$transactionStarted = pg_query($conn, 'BEGIN');
+if (!$transactionStarted) {
+    error_log('Unable to begin file permission transaction: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể lưu quyền truy cập.'], 500);
+}
+
+$insertedPermission = pg_query_params(
+    $conn,
+    'INSERT INTO file_permissions (file_id, user_id, granted_by)
+     SELECT $1, $2, $3
+     WHERE NOT EXISTS (
+         SELECT 1 FROM file_permissions WHERE file_id = $1 AND user_id = $2
+     )
+     RETURNING id',
+    [$fileId, $user['id'], FILESHARE_OWNER_ID]
+);
+if (!$insertedPermission) {
+    pg_query($conn, 'ROLLBACK');
+    error_log('Failed to grant file permission: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể lưu quyền truy cập.'], 500);
+}
+if (pg_num_rows($insertedPermission) === 0) {
+    pg_query($conn, 'ROLLBACK');
+    json_response(['error' => 'Email này đã được cấp quyền cho tệp.'], 409);
+}
+
+$activity = pg_query_params(
+    $conn,
+    'INSERT INTO activity_logs (user_id, file_id, action) VALUES ($1, $2, $3)',
+    [FILESHARE_OWNER_ID, $fileId, 'permission_granted']
+);
+if (!$activity) {
+    pg_query($conn, 'ROLLBACK');
+    error_log('Failed to record permission activity: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể ghi nhận hoạt động chia sẻ.'], 500);
+}
+if (!pg_query($conn, 'COMMIT')) {
+    pg_query($conn, 'ROLLBACK');
+    error_log('Failed to commit file permission transaction: ' . pg_last_error($conn));
+    json_response(['error' => 'Không thể lưu quyền truy cập.'], 500);
+}
+
+json_response(['permission' => ['full_name' => $user['full_name'], 'email' => $user['email']]], 201);

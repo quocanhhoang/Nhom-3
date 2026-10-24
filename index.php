@@ -1,7 +1,15 @@
+<?php
+session_start();
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->format('Y-m-d');
+?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f5f7fb">
     <title>FileShare — Không gian tệp của bạn</title>
@@ -29,7 +37,7 @@
                 <button class="nav-link" type="button" data-view="files">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.25A2.25 2.25 0 0 1 6.25 5h4l2 2h5.5A2.25 2.25 0 0 1 20 9.25v8.5A2.25 2.25 0 0 1 17.75 20h-11A2.75 2.75 0 0 1 4 17.25v-10Z"/><path d="M4.5 10h15" /></svg>
                     <span>Tệp của tôi</span>
-                    <span class="nav-count" id="nav-file-count">3</span>
+                    <span class="nav-count" id="nav-file-count">0</span>
                 </button>
                 <button class="nav-link" type="button" data-view="upload">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.25A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V14"/></svg>
@@ -94,7 +102,7 @@
                         </article>
                         <article class="stat-card">
                             <div class="stat-top"><span>Tổng số tệp</span><span class="stat-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 3.5H7.75A2.75 2.75 0 0 0 5 6.25v11.5a2.75 2.75 0 0 0 2.75 2.75h8.5A2.75 2.75 0 0 0 19 17.75V9l-5.5-5.5Z"/><path d="M13 4v5h5"/></svg></span></div>
-                            <div class="stat-value">120</div>
+                            <div class="stat-value" id="stat-file-count">0</div>
                             <div class="stat-foot"><span class="trend">↑ 8%</span> so với tháng trước</div>
                         </article>
                         <article class="stat-card">
@@ -161,10 +169,10 @@
 
                 <section class="view-panel" id="upload-view" aria-labelledby="upload-title">
                     <div class="page-heading"><div><p class="eyebrow">THƯ VIỆN CỦA BẠN</p><h1 id="upload-title">Tải tệp lên</h1><p class="welcome-subtitle">Thêm tệp mới và thiết lập quyền chia sẻ.</p></div></div>
-                    <form class="upload-layout" id="upload-form">
+                    <form class="upload-layout" id="upload-form" enctype="multipart/form-data">
                         <div class="upload-main">
                             <label class="dropzone" id="dropzone" for="file-input">
-                                <input id="file-input" type="file" hidden>
+                                <input id="file-input" name="file" type="file" hidden>
                                 <span class="upload-cloud"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.25A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V14"/></svg></span>
                                 <strong>Kéo thả tệp vào đây</strong>
                                 <span class="dropzone-subtitle">hoặc chọn tệp từ thiết bị của bạn</span>
@@ -174,7 +182,7 @@
                             <div class="selected-file" id="selected-file" hidden></div>
                             <div class="form-card">
                                 <label class="field-label" for="file-name">Tên tệp</label>
-                                <input class="text-input" id="file-name" name="fileName" type="text" value="BaoCao.docx" required>
+                                <input class="text-input" id="file-name" name="fileName" type="text" placeholder="Tên tệp hiển thị" required>
                                 <div class="field-label access-label">Quyền tải xuống</div>
                                 <div class="radio-options">
                                     <label class="radio-card selected"><input type="radio" name="access" value="public" checked><span class="radio-indicator"></span><span><strong>Công khai</strong><small>Bất kỳ ai có liên kết đều có thể tải</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m0-18 7 7m-7-7L5 10"/></svg></label>
@@ -186,9 +194,9 @@
                             <div class="form-card settings-card">
                                 <h2>Cài đặt chia sẻ</h2>
                                 <label class="field-label" for="download-limit">Giới hạn lượt tải</label>
-                                <div class="input-suffix"><input class="text-input" id="download-limit" name="limit" type="number" min="1" value="10"><span>lượt</span></div>
+                                <div class="input-suffix"><input class="text-input" id="download-limit" name="limit" type="number" min="1" value="10" required><span>lượt</span></div>
                                 <label class="field-label expiry-label" for="expiry-date">Ngày hết hạn</label>
-                                <div class="date-input-wrap"><input class="text-input" id="expiry-date" name="expiry" type="date" value="2026-11-20"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
+                                <div class="date-input-wrap"><input class="text-input" id="expiry-date" name="expiry" type="date" min="<?= date('Y-m-d') ?>" value="<?= htmlspecialchars($defaultExpiryDate, ENT_QUOTES, 'UTF-8') ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
                                 <div class="settings-note"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>Liên kết sẽ tự động hết hạn sau ngày đã chọn.</div>
                                 <button class="primary-button save-button" type="submit">Lưu tệp <span aria-hidden="true">→</span></button>
                             </div>
