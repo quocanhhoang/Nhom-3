@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+$userId = require_authenticated_user();
 
 $body = null;
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
@@ -23,7 +24,7 @@ if ($fileId === false) {
 $ownedFile = pg_query_params(
     $conn,
     'SELECT id FROM files WHERE id = $1 AND owner_id = $2',
-    [$fileId, FILESHARE_OWNER_ID]
+    [$fileId, $userId]
 );
 if (!$ownedFile) {
     error_log('Failed to verify file ownership: ' . pg_last_error($conn));
@@ -69,7 +70,7 @@ $user = pg_fetch_assoc($userResult);
 if (!$user) {
     json_response(['error' => 'Email này chưa thuộc tài khoản người dùng nào.'], 404);
 }
-if ((int) $user['id'] === FILESHARE_OWNER_ID) {
+if ((int) $user['id'] === $userId) {
     json_response(['error' => 'Chủ sở hữu tệp đã có quyền truy cập.'], 409);
 }
 
@@ -87,7 +88,7 @@ $insertedPermission = pg_query_params(
          SELECT 1 FROM file_permissions WHERE file_id = $1 AND user_id = $2
      )
      RETURNING id',
-    [$fileId, $user['id'], FILESHARE_OWNER_ID]
+    [$fileId, $user['id'], $userId]
 );
 if (!$insertedPermission) {
     pg_query($conn, 'ROLLBACK');
@@ -102,7 +103,7 @@ if (pg_num_rows($insertedPermission) === 0) {
 $activity = pg_query_params(
     $conn,
     'INSERT INTO activity_logs (user_id, file_id, action) VALUES ($1, $2, $3)',
-    [FILESHARE_OWNER_ID, $fileId, 'permission_granted']
+    [$userId, $fileId, 'permission_granted']
 );
 if (!$activity) {
     pg_query($conn, 'ROLLBACK');

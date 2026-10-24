@@ -1,5 +1,14 @@
 <?php
 session_start();
+if (empty($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit;
+}
+$currentUserName = (string) ($_SESSION['user_name'] ?? 'Tài khoản');
+preg_match('/^./u', $currentUserName, $initialMatch);
+$userInitial = $initialMatch[0] ?? 'U';
+require_once __DIR__ . '/config/app.php';
+$allowedExtensions = implode(',', FILESHARE_ALLOWED_EXTENSIONS);
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -39,6 +48,10 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                     <span>Tệp của tôi</span>
                     <span class="nav-count" id="nav-file-count">0</span>
                 </button>
+                <button class="nav-link" type="button" data-view="folders">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4l2 2h6A2.5 2.5 0 0 1 20.5 9.5v8A2.5 2.5 0 0 1 18 20H6a2.5 2.5 0 0 1-2.5-2.5v-10Z"/><path d="M4 10h16"/></svg>
+                    <span>Thư mục</span>
+                </button>
                 <button class="nav-link" type="button" data-view="upload">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.25A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V14"/></svg>
                     <span>Tải tệp lên</span>
@@ -51,14 +64,14 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
 
             <div class="sidebar-bottom">
                 <div class="storage-card">
-                    <div class="storage-heading"><span>Dung lượng</span><span>68%</span></div>
-                    <div class="storage-bar"><span></span></div>
-                    <p>6.8 GB <span>/ 10 GB đã dùng</span></p>
+                    <div class="storage-heading"><span>Dung lượng</span><span id="storage-percent">0%</span></div>
+                    <div class="storage-bar"><span id="storage-bar-fill"></span></div>
+                    <p><span id="storage-used">0 B</span> <span>/ <span id="storage-quota">1 GB</span> đã dùng</span></p>
                     <button type="button" class="storage-upgrade">Nâng cấp gói <span aria-hidden="true">↗</span></button>
                 </div>
-                <button class="profile-card" type="button" aria-label="Tài khoản Kight">
-                    <span class="avatar">K</span>
-                    <span class="profile-copy"><strong>Kight</strong><small>Gói miễn phí</small></span>
+                <button class="profile-card" type="button" aria-label="Tài khoản <?= htmlspecialchars($currentUserName, ENT_QUOTES, 'UTF-8') ?>">
+                    <span class="avatar"><?= htmlspecialchars($userInitial, ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="profile-copy"><strong><?= htmlspecialchars($currentUserName, ENT_QUOTES, 'UTF-8') ?></strong><small>Tài khoản của bạn</small></span>
                     <svg class="more-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
                 </button>
             </div>
@@ -76,7 +89,8 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                         <i></i>
                     </button>
                     <span class="topbar-divider"></span>
-                    <span class="avatar avatar-small">K</span>
+                    <span class="avatar avatar-small"><?= htmlspecialchars($userInitial, ENT_QUOTES, 'UTF-8') ?></span>
+                    <button class="logout-button" type="button" id="logout-button">Đăng xuất</button>
                 </div>
             </header>
 
@@ -85,7 +99,7 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                     <div class="welcome-row">
                         <div>
                             <p class="eyebrow"><span class="status-dot"></span> THỨ BẢY, 17 THÁNG 10, 2026</p>
-                            <h1 id="welcome-title">Xin chào, Kight <span class="wave" aria-hidden="true">✦</span></h1>
+                            <h1 id="welcome-title">Xin chào, <?= htmlspecialchars($currentUserName, ENT_QUOTES, 'UTF-8') ?> <span class="wave" aria-hidden="true">✦</span></h1>
                             <p class="welcome-subtitle">Sẵn sàng chia sẻ những tệp quan trọng của bạn?</p>
                         </div>
                         <button class="primary-button" type="button" data-open-upload>
@@ -162,7 +176,7 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                 <section class="view-panel" id="files-view" aria-labelledby="files-title">
                     <div class="page-heading"><div><p class="eyebrow">THƯ VIỆN CỦA BẠN</p><h1 id="files-title">Tệp của tôi</h1><p class="welcome-subtitle">Quản lý và chia sẻ tất cả tệp của bạn.</p></div><button class="primary-button" type="button" data-open-upload><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.25A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V14"/></svg>Tải tệp lên</button></div>
                     <section class="content-card full-files-card">
-                        <div class="file-toolbar"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4 4"/></svg><input id="file-search" type="search" placeholder="Tìm kiếm tệp..." aria-label="Tìm kiếm tệp"></label><button class="filter-button" type="button">Tất cả tệp <span aria-hidden="true">⌄</span></button></div>
+                        <div class="file-toolbar"><label class="search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4 4"/></svg><input id="file-search" type="search" placeholder="Tìm kiếm tệp..." aria-label="Tìm kiếm tệp"></label><label class="sr-only" for="file-folder-filter">Lọc thư mục</label><select class="filter-button" id="file-folder-filter" aria-label="Lọc thư mục"><option value="all">Tất cả thư mục</option></select><label class="sr-only" for="file-status-filter">Lọc trạng thái chia sẻ</label><select class="filter-button" id="file-status-filter" aria-label="Lọc trạng thái chia sẻ"><option value="all">Tất cả trạng thái</option><option value="public">Công khai</option><option value="private">Riêng tư</option><option value="revoked">Đã thu hồi</option><option value="expired">Đã hết hạn</option><option value="missing">Thiếu trên ổ đĩa</option></select><a class="filter-button report-button" href="api/access_report.php" download>Xuất báo cáo truy cập</a></div>
                         <div class="file-table-wrap"><table class="file-table"><thead><tr><th>TÊN TỆP</th><th>NGÀY TẢI LÊN</th><th>QUYỀN TRUY CẬP</th><th>LƯỢT TẢI</th><th></th></tr></thead><tbody id="all-file-rows"></tbody></table></div>
                     </section>
                 </section>
@@ -172,18 +186,20 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                     <form class="upload-layout" id="upload-form" enctype="multipart/form-data">
                         <div class="upload-main">
                             <label class="dropzone" id="dropzone" for="file-input">
-                                <input id="file-input" name="file" type="file" hidden>
+                                <input id="file-input" name="file" type="file" accept="<?= htmlspecialchars(implode(',', array_map(static fn (string $extension): string => '.' . $extension, FILESHARE_ALLOWED_EXTENSIONS)), ENT_QUOTES, 'UTF-8') ?>" hidden>
                                 <span class="upload-cloud"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4m0 0L8 8m4-4 4 4"/><path d="M5 14v4.25A1.75 1.75 0 0 0 6.75 20h10.5A1.75 1.75 0 0 0 19 18.25V14"/></svg></span>
                                 <strong>Kéo thả tệp vào đây</strong>
                                 <span class="dropzone-subtitle">hoặc chọn tệp từ thiết bị của bạn</span>
                                 <span class="secondary-button">Chọn tệp</span>
-                                <span class="dropzone-hint">Hỗ trợ mọi định dạng · Tối đa 100 MB</span>
+                                <span class="dropzone-hint">Định dạng: <?= htmlspecialchars(strtoupper(implode(', ', FILESHARE_ALLOWED_EXTENSIONS)), ENT_QUOTES, 'UTF-8') ?> · Tối đa <?= (int) (FILESHARE_MAX_UPLOAD_BYTES / 1024 / 1024) ?> MB</span>
                             </label>
                             <div class="selected-file" id="selected-file" hidden></div>
                             <div class="form-card">
                                 <label class="field-label" for="file-name">Tên tệp</label>
                                 <input class="text-input" id="file-name" name="fileName" type="text" placeholder="Tên tệp hiển thị" required>
                                 <div class="field-label access-label">Quyền tải xuống</div>
+                                <label class="field-label" for="upload-folder">Lưu vào thư mục</label>
+                                <select class="text-input" id="upload-folder" name="folder_id"><option value="">Không có thư mục</option></select>
                                 <div class="radio-options">
                                     <label class="radio-card selected"><input type="radio" name="access" value="public" checked><span class="radio-indicator"></span><span><strong>Công khai</strong><small>Bất kỳ ai có liên kết đều có thể tải</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m0-18 7 7m-7-7L5 10"/></svg></label>
                                     <label class="radio-card"><input type="radio" name="access" value="private"><span class="radio-indicator"></span><span><strong>Riêng tư</strong><small>Chỉ người được cấp quyền mới có thể tải</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></label>
@@ -205,15 +221,24 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
                     </form>
                 </section>
 
+                <section class="view-panel" id="folders-view" aria-labelledby="folders-title">
+                    <div class="page-heading"><div><p class="eyebrow">SẮP XẾP TỆP</p><h1 id="folders-title">Thư mục</h1><p class="welcome-subtitle">Tạo và quản lý thư mục lưu trữ của bạn.</p></div></div>
+                    <section class="content-card folder-manager-card">
+                        <form id="create-folder-form" class="add-user-form"><label class="sr-only" for="folder-name">Tên thư mục</label><input id="folder-name" maxlength="255" placeholder="Tên thư mục mới..." required><button class="primary-button" type="submit">Tạo thư mục</button></form>
+                        <div id="folder-list" class="folder-list" aria-live="polite"></div>
+                    </section>
+                </section>
+
                 <section class="view-panel" id="shared-view" aria-labelledby="shared-title">
                     <div class="page-heading"><div><p class="eyebrow">CHIA SẺ AN TOÀN</p><h1 id="shared-title">Chi tiết tệp</h1><p class="welcome-subtitle">Quản lý liên kết và những người có quyền truy cập.</p></div><button class="secondary-button back-files" type="button" data-open-files>← Tất cả tệp</button></div>
                     <div class="details-layout">
                         <section class="content-card details-card">
                             <div class="detail-file-heading"><span class="file-icon word" id="detail-file-icon"><span>W</span></span><div><h2 id="detail-file-name">BaoCao.docx</h2><p id="detail-file-meta">Tải lên ngày 15/10/2026 · 2.4 MB</p></div><span class="access-badge public" id="detail-access"><i></i>Công khai</span></div>
                             <div class="detail-section"><h3>Liên kết chia sẻ</h3><p id="share-description">Ai có liên kết đều có thể xem và tải tệp này.</p><div class="share-link"><span id="share-url">https://fileshare.vn/f/abc123</span><button type="button" id="copy-link" class="copy-button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>Sao chép</button></div></div>
-                            <div class="detail-section permission-section"><div class="permission-heading"><div><h3>Người được cấp quyền</h3><p>Những người có quyền truy cập tệp này.</p></div><span class="permission-count" id="permission-count">2 người</span></div><div class="permission-list" id="permission-list"><div class="permission-user"><span class="mini-avatar user-a">NA</span><span><strong>Nguyễn Văn An</strong><small>nguyenvana@gmail.com</small></span><span class="permission-check" aria-label="Được cấp quyền">✓</span></div><div class="permission-user"><span class="mini-avatar user-b">NB</span><span><strong>Nguyễn Văn B</strong><small>nguyenvanb@gmail.com</small></span><span class="permission-check" aria-label="Được cấp quyền">✓</span></div></div><form class="add-user-form" id="add-user-form"><label class="sr-only" for="user-email">Địa chỉ email</label><input id="user-email" type="email" placeholder="Nhập địa chỉ email..." required><button class="secondary-button" type="submit"><span aria-hidden="true">+</span> Thêm người dùng</button></form></div>
+                            <div class="detail-section permission-section"><div class="permission-heading"><div><h3>Người được cấp quyền</h3><p>Những người có quyền truy cập tệp này.</p></div><span class="permission-count" id="permission-count">0 người</span></div><div class="permission-list" id="permission-list"></div><button class="text-button permission-history-toggle" type="button" id="permission-history-toggle">Xem lịch sử cấp quyền</button><div class="permission-history" id="permission-history" hidden></div><form class="add-user-form" id="add-user-form"><label class="sr-only" for="user-email">Địa chỉ email</label><input id="user-email" type="email" placeholder="Nhập địa chỉ email..." required><button class="secondary-button" type="submit"><span aria-hidden="true">+</span> Thêm người dùng</button></form></div>
+                            <div class="detail-section file-management-section"><h3>Quản lý tệp</h3><form id="move-file-form"><label class="sr-only" for="move-folder">Chuyển vào thư mục</label><select class="text-input" id="move-folder"><option value="">Không có thư mục</option></select><button class="secondary-button" type="submit">Chuyển thư mục</button></form><button class="danger-button" type="button" id="delete-file">Xóa tệp</button></div>
                         </section>
-                        <aside class="content-card link-settings"><h2>Cài đặt liên kết</h2><div class="link-setting-row"><span class="stat-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 2.93l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.72-1.72"/></svg></span><div><strong>Liên kết đang hoạt động</strong><small>Đã tạo ngày 15/10/2026</small></div><span class="toggle on" aria-label="Đang bật"><i></i></span></div><div class="link-setting-row"><span class="stat-icon orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M5 18v2h14v-2"/></svg></span><div><strong>Giới hạn lượt tải</strong><small>24 / 100 lượt tải</small></div></div><div class="link-setting-row"><span class="stat-icon violet"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><div><strong>Ngày hết hạn</strong><small>20/11/2026</small></div></div><button class="danger-button" type="button" id="revoke-link">Thu hồi liên kết</button></aside>
+                        <aside class="content-card link-settings"><h2>Cài đặt liên kết</h2><div class="link-setting-row"><span class="stat-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 2.93l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21.07l1.72-1.72"/></svg></span><div><strong>Liên kết chia sẻ</strong><small id="link-status-label">Liên kết đang hoạt động</small></div><span class="toggle on" id="link-status-toggle" aria-label="Đang bật"><i></i></span></div><div class="link-setting-row"><span class="stat-icon orange"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M5 18v2h14v-2"/></svg></span><div><strong>Giới hạn lượt tải</strong><small id="link-download-limit">—</small></div></div><div class="link-setting-row"><span class="stat-icon violet"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><div><strong>Ngày hết hạn</strong><small id="link-expiry">—</small></div></div><button class="danger-button" type="button" id="revoke-link">Thu hồi liên kết</button><button class="primary-button create-link-button" type="button" id="create-link" hidden>Tạo liên kết mới</button></aside>
                     </div>
                 </section>
                 <footer class="page-footer"><span>© 2026 FileShare</span><span>Chia sẻ tệp dễ dàng và an toàn.</span><a href="#" id="help-link">Trung tâm trợ giúp</a></footer>
@@ -222,5 +247,7 @@ $defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->forma
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="assets/js/script.js"></script>
+    <script src="assets/js/file-library.js"></script>
+    <script src="assets/js/folders.js"></script>
 </body>
 </html>

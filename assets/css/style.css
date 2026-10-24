@@ -36,7 +36,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .storage-heading { display: flex; justify-content: space-between; color: #484b61; font-size: 12px; font-weight: 600; }
 .storage-heading span:last-child { color: var(--purple); }
 .storage-bar { height: 6px; margin: 12px 0 8px; overflow: hidden; border-radius: 9px; background: #edecf4; }
-.storage-bar span { display: block; width: 68%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7c6bf1, #5945dc); }
+.storage-bar span { display: block; width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7c6bf1, #5945dc); }
 .storage-card p { margin: 0; color: #4d5065; font-size: 11px; font-weight: 600; }
 .storage-card p span { color: #a1a3b1; font-weight: 400; }
 .storage-upgrade { margin: 11px 0 0; padding: 0; border: 0; background: none; color: var(--purple); font-size: 11px; font-weight: 700; cursor: pointer; }
@@ -114,6 +114,7 @@ h1 { margin-bottom: 7px; color: #272a40; font-family: Manrope, sans-serif; font-
 .access-badge i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .access-badge.public { background: #eaf8f1; color: #36a878; }
 .access-badge.private { background: #fff4e8; color: #dc9849; }
+.access-badge.missing { background: #fff0f0; color: #c94d55; }
 .row-menu, .more-button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: #a2a4b2; font-size: 18px; line-height: 1; cursor: pointer; }
 .row-menu:hover, .more-button:hover { background: #f5f4fa; color: var(--purple); }
 .activity-card { display: flex; flex-direction: column; }
@@ -132,6 +133,8 @@ h1 { margin-bottom: 7px; color: #272a40; font-family: Manrope, sans-serif; font-
 .users-card { margin-top: 17px; padding-bottom: 7px; }
 .filter-button { display: inline-flex; align-items: center; gap: 13px; min-height: 31px; padding: 0 10px; border: 1px solid #ebecf2; border-radius: 6px; background: #fff; color: #73768a; font-size: 10px; cursor: pointer; }
 .filter-button:hover { border-color: #d8d2ff; color: var(--purple); }
+.report-button { text-decoration: none; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .user-table { margin-top: 15px; }
 .user-table td { height: 46px; }
 .user-name { display: flex; align-items: center; gap: 8px; }
@@ -219,6 +222,12 @@ h1 { margin-bottom: 7px; color: #272a40; font-family: Manrope, sans-serif; font-
 .permission-user strong { color: #4c4f63; font-size: 10px; font-weight: 600; }
 .permission-user small { color: #a0a2b0; font-size: 9px; }
 .permission-check { display: grid; width: 20px; height: 20px; place-items: center; margin-left: auto; border-radius: 50%; background: #e9f8f0; color: #37aa78; font-size: 11px; font-weight: 700; }
+.permission-history-toggle { margin-top: 12px; padding: 0; font-size: 10px; }
+.permission-history { display: grid; gap: 9px; margin-top: 10px; padding: 11px; border-radius: 7px; background: #faf9ff; }
+.permission-history p { margin: 0; color: #999baa; font-size: 10px; }
+.permission-history-item { display: grid; gap: 3px; }
+.permission-history-item strong { color: #4c4f63; font-size: 10px; }
+.permission-history-item small { color: #999baa; font-size: 9px; }
 .add-user-form { display: flex; gap: 8px; margin-top: 16px; }
 .add-user-form input { min-width: 0; flex: 1; height: 34px; padding: 0 10px; border: 1px solid #e9eaf0; border-radius: 7px; outline: 0; font-size: 10px; }
 .add-user-form input::placeholder { color: #aaacb8; }
@@ -234,6 +243,36 @@ h1 { margin-bottom: 7px; color: #272a40; font-family: Manrope, sans-serif; font-
 .toggle i { width: 13px; height: 13px; margin-left: auto; border-radius: 50%; background: #fff; }
 .danger-button { width: 100%; min-height: 35px; margin-top: 13px; border: 1px solid #f4dada; border-radius: 7px; background: #fffafa; color: #d66c6c; font-size: 10px; font-weight: 600; cursor: pointer; }
 .danger-button:hover { background: #fff1f1; }
+.create-link-button { width: 100%; justify-content: center; margin-top: 13px; }
+.file-management-section h3 { margin-bottom: 10px; }
+#move-file-form { display: flex; gap: 8px; }
+#move-file-form .text-input { min-width: 0; flex: 1; }
+.folder-manager-card { padding: 20px; }
+.folder-list { display: grid; gap: 10px; margin-top: 18px; }
+.folder-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px; border: 1px solid #eeeef4; border-radius: 8px; }
+.folder-item > div { display: grid; gap: 4px; }
+.folder-item .folder-actions { display: flex; align-items: center; gap: 8px; }
+.folder-actions .folder-add-files { min-height: 30px; padding: 0 10px; font-size: 10px; }
+.folder-file-picker { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; padding-top: 10px; }
+.folder-file-picker .text-input { min-width: 180px; flex: 1; }
+.folder-file-picker button { min-height: 34px; padding: 0 12px; font-size: 10px; }
+.folder-item strong { color: #424559; font-size: 12px; }
+.folder-item small, .folder-empty { color: #999baa; font-size: 10px; }
+.folder-empty { margin: 4px; }
+.folder-delete { width: auto; min-height: 30px; margin: 0; padding: 0 10px; }
+.logout-button { border: 0; background: transparent; color: #7161d2; font-size: 10px; cursor: pointer; }
+.auth-page { display: grid; min-height: 100vh; place-items: center; padding: 20px; background: #f5f7fb; }
+.auth-card { width: min(420px, 100%); padding: 32px; border: 1px solid #ebeaf3; border-radius: 14px; background: #fff; box-shadow: 0 14px 50px #29234a0c; }
+.auth-brand { margin-bottom: 28px; }
+.auth-card h1 { margin: 0 0 7px; color: #272a40; font: 750 24px Manrope, sans-serif; }
+.auth-card > p { color: #888b9e; font-size: 12px; }
+.auth-card form { display: grid; gap: 9px; margin-top: 22px; }
+.auth-card label { margin-top: 7px; color: #55586b; font-size: 11px; }
+.auth-card input { width: 100%; height: 42px; padding: 0 11px; border: 1px solid #e6e7ef; border-radius: 7px; font-size: 12px; }
+.auth-card form .primary-button { justify-content: center; margin-top: 10px; }
+.auth-switch { margin-top: 20px; text-align: center; }
+.auth-switch button { border: 0; background: none; color: #6855e8; font-size: inherit; font-weight: 700; cursor: pointer; }
+.auth-error { min-height: 16px; color: #c94d55 !important; }
 .page-footer { display: flex; align-items: center; gap: 18px; margin-top: 26px; padding: 14px 2px 2px; border-top: 1px solid #edefF4; color: #a6a8b5; font-size: 9px; }
 .page-footer span:nth-child(2) { margin-left: auto; }
 .page-footer a { color: #8e83df; text-decoration: none; }
