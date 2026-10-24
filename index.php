@@ -1,7 +1,16 @@
+<?php
+require_once __DIR__ . '/lib.php';
+app_session_start();
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$defaultExpiryDate = (new DateTimeImmutable('today'))->modify('+30 days')->format('Y-m-d');
+?>
 <!DOCTYPE html>
 <html lang="vi" data-theme="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#090d18">
     <title>FileShare — Không gian tệp của bạn</title>
@@ -186,7 +195,7 @@
 
                 <section class="view-panel" id="upload-view" aria-labelledby="upload-title">
                     <div class="page-heading"><div><p class="eyebrow">THƯ VIỆN CỦA BẠN</p><h1 id="upload-title">Tải tệp lên</h1><p class="welcome-subtitle">Thêm tệp mới và thiết lập quyền chia sẻ.</p></div></div>
-                    <form class="upload-layout" id="upload-form">
+                    <form class="upload-layout" id="upload-form" enctype="multipart/form-data">
                         <div class="upload-main">
                             <label class="dropzone" id="dropzone" for="file-input">
                                 <input id="file-input" type="file" accept=".pdf,.txt,.csv,.png,.jpg,.jpeg,.gif,.webp" hidden>

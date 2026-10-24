@@ -112,7 +112,7 @@
     };
 
     const getIconType = (name) => {
-        const extension = name.split(".").pop().toLowerCase();
+        const extension = name.includes(".") ? name.split(".").pop().toLowerCase() : "";
         if (["doc", "docx"].includes(extension)) return ["word", "W"];
         if (extension === "pdf") return ["pdf", "P"];
         if (["xls", "xlsx", "csv"].includes(extension)) return ["excel", "X"];
@@ -635,7 +635,7 @@
         try {
             await navigator.clipboard.writeText(link);
             showToast("Đã sao chép liên kết chia sẻ.");
-        } catch (error) {
+        } catch {
             showToast("Không thể sao chép tự động. Hãy chọn và sao chép liên kết.");
         }
     });
